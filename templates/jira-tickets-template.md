@@ -18,6 +18,7 @@ This document contains JIRA-sized work tickets generated from the detailed task 
 4. **Technical Details**: Implementation guidance (4 subsections)
 
 **Usage**:
+
 - Review tickets below for completeness and accuracy
 - Use `--interactive` flag to edit tickets before JIRA creation
 - Use `--create` flag to automatically create tickets in JIRA via jira-db skill
@@ -42,6 +43,7 @@ This document contains JIRA-sized work tickets generated from the detailed task 
 **Tasks Covered**: [Comma-separated task IDs or bullet list with brief descriptions]
 
 **Affected Systems**:
+
 - [System/module/component 1]
 - [System/module/component 2]
 
@@ -52,6 +54,7 @@ This document contains JIRA-sized work tickets generated from the detailed task 
 [User roles who benefit from or are affected by this work]
 
 **Edge Cases**:
+
 - [Edge case 1 to handle]
 - [Edge case 2 to handle]
 
@@ -60,31 +63,37 @@ This document contains JIRA-sized work tickets generated from the detailed task 
 **Verification Approach**: [High-level testing strategy]
 
 **Component Tests**:
+
 - [Component 1 test description and expected behavior]
 - [Component 2 test description and expected behavior]
 
 **Integration Test**: [End-to-end scenario with inputs and expected outputs]
 
 **Edge Case Validation**:
+
 - [Edge case 1 validation steps]
 - [Edge case 2 validation steps]
 
 ### Technical Details
 
 **Files to Modify**:
+
 - `[file/path/1]` - [Brief purpose]
 - `[file/path/2]` - [Brief purpose]
 
 **Functions to Add/Modify**:
+
 - [Function/section 1] - [What it does]
 - [Function/section 2] - [What it does]
 
 **Implementation Sequence**:
+
 1. [Step 1]
 2. [Step 2]
 3. [Step 3]
 
 **Dependencies**:
+
 - **External**: [External dependencies like libraries, skills, tools]
 - **Internal**: [Internal dependencies like other tasks, modules]
 - **Data**: [Required files, formats, or data structures]
@@ -109,6 +118,7 @@ This document contains JIRA-sized work tickets generated from the detailed task 
 | ... | ... | ... | ... | ... | ... |
 
 **Notes**:
+
 - Task IDs reference original line items in tasks.md
 - Group ID is internal identifier for this grouping
 - JIRA Key populated after --create flag execution
@@ -167,26 +177,31 @@ This document contains JIRA-sized work tickets generated from the detailed task 
 ### Automatic JIRA Creation
 
 **Basic command** (dry-run, no JIRA creation):
+
 ```bash
 /speckit.jira-tasks
 ```
 
 **With JIRA creation**:
+
 ```bash
 /speckit.jira-tasks --create --project PM --team "Platform Team"
 ```
 
 **With Epic association**:
+
 ```bash
 /speckit.jira-tasks --create --project PM --team "Platform Team" --epic PM-1000
 ```
 
 **With interactive review**:
+
 ```bash
 /speckit.jira-tasks --interactive --create --project PM
 ```
 
 **Available Flags**:
+
 - `--dry-run`: Preview tickets without creating (default behavior)
 - `--create`: Create tickets in JIRA via jira-db skill
 - `--project PROJECT_KEY`: JIRA project key (required with --create)
@@ -195,6 +210,7 @@ This document contains JIRA-sized work tickets generated from the detailed task 
 - `--interactive`: Review and edit tickets before creation (optional)
 
 **Prerequisites for --create**:
+
 - jira-db skill must be installed and configured
 - Valid JIRA credentials in jira-db cache
 - Project key must exist in JIRA
@@ -208,6 +224,7 @@ This document contains JIRA-sized work tickets generated from the detailed task 
 ### AI-Friendly Documentation Style
 
 All tickets follow AI-friendly principles:
+
 - **Explicit labeling**: Bold subsection headers (**Purpose:**, **Tasks Covered:**, etc.)
 - **Reduced ambiguity**: Specific formats, clear examples, structured data
 - **Canonical terminology**: Consistent terms across all tickets
@@ -217,6 +234,7 @@ All tickets follow AI-friendly principles:
 ### Ticket Editing
 
 **Before JIRA creation**, you can:
+
 1. Edit any ticket field directly in this file (markdown format)
 2. Add clarifications or context based on team knowledge
 3. Adjust groupings (split large tickets, merge small ones)
@@ -224,6 +242,7 @@ All tickets follow AI-friendly principles:
 5. Run `/speckit.jira-tasks --interactive` for guided editing
 
 **After JIRA creation**:
+
 - Update this file with JIRA keys in Task-to-Ticket Mapping table
 - Use JIRA interface for further ticket modifications
 - This file serves as archival record of original generation
@@ -231,16 +250,19 @@ All tickets follow AI-friendly principles:
 ### Troubleshooting
 
 **Empty output or missing tickets**:
+
 - Verify tasks.md exists and follows proper format: `- [ ] T### [P?] [Story?] Description with file path`
 - Check that tasks have story labels ([US1], [US2], etc.) for user story phases
 - Ensure file paths are present in task descriptions
 
 **Incorrect grouping**:
+
 - Review grouping algorithm parameters (target 5-8 tasks per ticket)
 - Check if task story labels match intended user stories
 - Use --interactive flag to manually adjust groupings
 
 **JIRA creation failures**:
+
 - Verify jira-db skill configuration: `Skill: "jira-db"`
 - Check project key exists: Epic validation logs will show errors
 - Verify team name resolves: Error messages list available teams

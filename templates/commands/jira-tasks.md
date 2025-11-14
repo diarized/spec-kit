@@ -38,6 +38,7 @@ This command converts granular AI-friendly tasks from tasks.md into JIRA-sized w
 Run the prerequisite script (already executed via YAML frontmatter) and parse the JSON output:
 
 **Expected JSON Output**:
+
 ```json
 {
   "FEATURE_DIR": "/absolute/path/to/specs/###-feature-name",
@@ -50,12 +51,14 @@ Run the prerequisite script (already executed via YAML frontmatter) and parse th
 ```
 
 **Actions**:
+
 1. Parse JSON output from prerequisite script
 2. Store paths in variables: `FEATURE_DIR`, `TASKS_FILE`, `JIRA_TICKETS_FILE`, `FEATURE_NUM`, `FEATURE_NAME`
 3. Verify `TASKS_FILE` exists and is readable
 4. If tasks.md missing or empty, ERROR: "tasks.md not found. Run `/speckit.tasks` first to generate task breakdown."
 
 **Error Handling**:
+
 - Missing tasks.md → Clear error with actionable message
 - Unreadable tasks.md → Check file permissions
 - Invalid JSON from script → Report script error
@@ -67,6 +70,7 @@ Run the prerequisite script (already executed via YAML frontmatter) and parse th
 **Purpose**: Extract user-specified flags from $ARGUMENTS
 
 **Supported Flags**:
+
 - `--dry-run`: Preview ticket generation without creating in JIRA (default behavior if no --create)
 - `--create`: Create tickets in JIRA via jira-db skill (requires --project)
 - `--project PROJECT_KEY`: JIRA project key (required with --create)
@@ -75,6 +79,7 @@ Run the prerequisite script (already executed via YAML frontmatter) and parse th
 - `--interactive`: Review and edit tickets before finalizing (optional)
 
 **Parsing Logic**:
+
 - Parse $ARGUMENTS string to extract flags and values
 - Handle flags with values: `--project PM`, `--team "Platform Team"`, `--epic PM-1000`
 - Handle boolean flags: `--dry-run`, `--create`, `--interactive`
@@ -82,12 +87,14 @@ Run the prerequisite script (already executed via YAML frontmatter) and parse th
 - If `--create` specified without `--project`, ERROR: "--create requires --project flag"
 
 **Flag Validation**:
+
 - PROJECT_KEY format: Alphanumeric, typically 2-10 characters
 - EPIC_KEY format: PROJECT_KEY-NUMBER (e.g., PM-1000)
 - Team name: Any string (resolved via jira-db later)
 
 **Store in Variables**:
-```
+
+```text
 DRY_RUN = true/false
 CREATE_IN_JIRA = true/false
 PROJECT_KEY = string or null
@@ -103,12 +110,14 @@ INTERACTIVE = true/false
 **Purpose**: Read tasks.md and parse into structured Task entities
 
 **Task Format** (from tasks.md):
+
 ```markdown
 - [ ] T012 [P] [US1] Create User model in src/models/user.py
 ```
 
 **Task Entity Structure**:
-```
+
+```text
 Task {
   id: "T012"
   checkbox: false (always unchecked for grouping)
@@ -122,6 +131,7 @@ Task {
 ```
 
 **Parsing Steps**:
+
 1. Read `TASKS_FILE` line by line
 2. Track current phase based on section headers:
    - "## Phase 1: Setup" → phase = "setup"
@@ -139,11 +149,13 @@ Task {
 4. Store all tasks in `tasks` array
 
 **Validation**:
+
 - Warn if task description missing file path: "Task T### missing file path - may impact Technical Details generation"
 - Error if no tasks found: "tasks.md contains no tasks or improper format. Expected: `- [ ] T### [P?] [Story?] Description with file path`"
 - Warn if very large task count (>200): "Feature has 200+ tasks. Consider splitting into multiple features."
 
 **Output**:
+
 - Array of Task entities: `tasks[]`
 - Total task count: `TOTAL_TASKS`
 - Progress message: "Loaded [COUNT] tasks from tasks.md"
@@ -155,6 +167,7 @@ Task {
 **Purpose**: Group tasks into JIRA-sized work units (5-8 tasks per ticket, approximately 1-3 days)
 
 **Grouping Constraints**:
+
 - Phase boundaries: Never mix setup, foundational, user_story, polish phases
 - Story affinity: Tasks with same story label stay together
 - File locality: Tasks modifying same files grouped together
@@ -166,6 +179,7 @@ Task {
 **Purpose**: Create phase-level buckets (phase boundaries are hard constraints)
 
 **Logic**:
+
 1. Create 4 buckets: `setup_tasks[]`, `foundational_tasks[]`, `user_story_tasks[]`, `polish_tasks[]`
 2. Iterate through all tasks, assign to bucket based on `task.phase`
 3. Each bucket becomes independent grouping scope for subsequent passes
@@ -177,12 +191,14 @@ Task {
 **Purpose**: Within user_story phase, group by story label ([US1], [US2], etc.)
 
 **Logic**:
+
 1. Focus on `user_story_tasks[]` bucket only
 2. Create story groups: Group tasks with same `story_label`
 3. Keep story groups as primary organization unit
 4. Tasks without story_label: Create separate "Unlabeled" group
 
 **Example**:
+
 - US1 group: All tasks with story_label = "US1"
 - US2 group: All tasks with story_label = "US2"
 - Unlabeled group: Tasks with story_label = null
@@ -194,6 +210,7 @@ Task {
 **Purpose**: Within each story group, cluster by file path to group related work
 
 **Logic**:
+
 1. For each story group from Pass 2:
 2. Extract all unique file paths mentioned in task descriptions
 3. Calculate file path similarity:
@@ -205,6 +222,7 @@ Task {
 5. Keep cluster size under 10 tasks
 
 **Clustering Algorithm**:
+
 - Start with first task in group
 - Add tasks that share file paths or directories
 - When cluster reaches 8 tasks or no more similar tasks, start new cluster
@@ -217,6 +235,7 @@ Task {
 **Purpose**: Ensure no ticket contains too many tasks (hard limit: 12 tasks)
 
 **Logic**:
+
 1. For each cluster from Pass 3:
 2. If cluster size ≤ 12 tasks: Keep as-is
 3. If cluster size > 12 tasks:
@@ -226,6 +245,7 @@ Task {
 4. Target range after split: 5-8 tasks per ticket
 
 **Splitting Strategy**:
+
 - Prefer splitting at file boundaries (different files → different tickets)
 - Respect sequential dependencies (don't split dependent tasks)
 - Keep parallel tasks [P] in same or different tickets as space allows
@@ -237,7 +257,8 @@ Task {
 **Purpose**: Formalize clusters as TaskGroup entities with metadata
 
 **TaskGroup Structure**:
-```
+
+```text
 TaskGroup {
   group_id: "G01" (sequential: G01, G02, G03, ...)
   tasks: [Task, Task, Task, ...] (ordered list)
@@ -251,6 +272,7 @@ TaskGroup {
 ```
 
 **Logic**:
+
 1. For each cluster from Pass 4:
 2. Assign sequential group_id (G01, G02, etc.)
 3. Store tasks array
@@ -265,11 +287,13 @@ TaskGroup {
 10. Store TaskGroup in `ticket_groups[]` array
 
 **Edge Case Handling**:
+
 - Mixed phase grouping (should not occur after Pass 1, but warn if detected)
 - Conflicting story labels (use first occurrence, warn)
 - Tasks without file paths (note in Technical Details that paths missing)
 
 **Output**:
+
 - Array of TaskGroup entities: `ticket_groups[]`
 - Total ticket count: `TOTAL_TICKETS`
 - Progress message: "Grouped [TASK_COUNT] tasks into [TICKET_COUNT] tickets"
@@ -287,6 +311,7 @@ TaskGroup {
 **Format**: 50-100 characters, verb+object+purpose
 
 **Logic**:
+
 1. Identify primary action from task descriptions (common verbs: Implement, Create, Add, Build, Modify)
 2. Identify primary object (what's being built: algorithm, template, integration, feature)
 3. Identify purpose (why it's needed: for ticket generation, to enable JIRA creation, etc.)
@@ -294,6 +319,7 @@ TaskGroup {
 5. Trim to under 100 characters
 
 **Example Generation**:
+
 - Tasks: T012-T016 all about grouping algorithm passes
 - Verb: "Implement"
 - Object: "task grouping algorithm"
@@ -305,32 +331,38 @@ TaskGroup {
 **Structure**: 6 subsections with bold labels
 
 **Purpose Subsection**:
+
 - Extract why from task descriptions and user story context
 - 1-2 sentences explaining value
 - Example: "This work implements the core grouping logic that converts 50-100 granular tasks into 8-15 JIRA-sized tickets, enabling project managers to track work in JIRA while preserving detailed breakdowns for AI agents."
 
 **Tasks Covered Subsection**:
+
 - List all task IDs from TaskGroup.task_ids
 - Format: Comma-separated or bullet list
 - Include brief description for each task
 - Example: "T012: Pass 1 - separate by phase, T013: Pass 2 - group by story label, ..."
 
 **Affected Systems Subsection**:
+
 - Extract unique file paths from tasks
 - List primary systems/modules/components touched
 - Example: "templates/commands/jira-tasks.md (grouping algorithm), Task entity parser, TaskGroup entity generator"
 
 **Key Workflows Subsection**:
+
 - Describe user interaction or system flow
 - Extract from task descriptions and spec.md context
 - Example: "Command reads tasks.md, parses Task entities, applies 5-pass grouping, generates TaskGroup entities, outputs to jira-tickets.md"
 
 **Stakeholders Subsection**:
+
 - Identify user roles from spec.md user stories
 - Match ticket phase/story to relevant stakeholders
 - Example: "Project managers (ticket creation), Developers (implementation guidance), Technical leads (review)"
 
 **Edge Cases Subsection**:
+
 - Extract edge cases from task descriptions or spec.md
 - List scenarios to handle
 - Example: "Empty tasks.md → error, Tasks without file paths → warning, Large task count (200+) → warning"
@@ -340,22 +372,26 @@ TaskGroup {
 **Structure**: 4 subsections with bold labels
 
 **Verification Approach Subsection**:
+
 - High-level testing strategy
 - Based on user story independent test criteria
 - Example: "Manual verification by running `/speckit.jira-tasks` on this feature's tasks.md, examining generated jira-tickets.md for proper grouping and structure"
 
 **Component Tests Subsection**:
+
 - List components or functions to test
 - Specify expected behavior
 - Extract from task descriptions
 - Example: "Task parsing: Verify all tasks parsed with id, parallel, story_label, file_path. Pass 1: Verify phase separation. Pass 2: Verify story grouping."
 
 **Integration Test Subsection**:
+
 - End-to-end scenario
 - Specify inputs and outputs
 - Example: "Run `/speckit.jira-tasks` on specs/001-jira-tasks-integration/tasks.md, verify output contains 8-12 tickets with 4 fields each"
 
 **Edge Case Validation Subsection**:
+
 - Test edge cases from Description field
 - Specify expected outcomes
 - Example: "Test empty tasks.md → verify error message. Test 200+ tasks → verify warning message."
@@ -365,22 +401,26 @@ TaskGroup {
 **Structure**: 4 subsections with bold labels
 
 **Files to Modify Subsection**:
+
 - List unique file paths from TaskGroup.primary_files
 - Add brief purpose for each
 - Example: "templates/commands/jira-tasks.md - Add grouping algorithm. templates/jira-ticket-template.md - Define structure."
 
 **Functions to Add/Modify Subsection**:
+
 - Extract action items from task descriptions
 - List steps or sections to implement
 - Example: "Add Pass 1 section for phase separation. Add Pass 2 section for story grouping. Implement TaskGroup entity creation."
 
 **Implementation Sequence Subsection**:
+
 - Order tasks by dependencies
 - Number steps 1, 2, 3
 - Respect task ordering from tasks.md
 - Example: "1. Parse tasks.md. 2. Apply Pass 1 (phase separation). 3. Apply Pass 2 (story grouping). 4. Create TaskGroup entities."
 
 **Dependencies Subsection**:
+
 - External: jira-db skill (if JIRA integration tasks)
 - Internal: Prerequisites from other tasks
 - Data: Required file formats
@@ -388,6 +428,7 @@ TaskGroup {
 - Example: "Internal: tasks.md must exist. Data: Task format `- [ ] T### [P?] [Story?] Description`. Cross-ticket: Ticket G02 depends on G01 grouping algorithm."
 
 **AI-Friendly Style**:
+
 - Use bold labels for all subsection headers
 - Write in bullet points or short paragraphs
 - Provide explicit structure
@@ -395,6 +436,7 @@ TaskGroup {
 - Use canonical terminology
 
 **Output**:
+
 - Each TaskGroup now has:
   - subject: string
   - description: markdown string (6 subsections)
@@ -414,6 +456,7 @@ TaskGroup {
 **Placeholder Replacement**:
 
 **Header Section**:
+
 - `[FEATURE_NAME]` → FEATURE_NAME from Step 1
 - `[TIMESTAMP]` → Current timestamp (YYYY-MM-DD HH:MM:SS)
 - `[TASKS_FILE_PATH]` → TASKS_FILE from Step 1
@@ -422,6 +465,7 @@ TaskGroup {
 - `[TOTAL_TICKETS]` → TOTAL_TICKETS from Step 4
 
 **For Each Ticket**:
+
 - `[GROUP_ID]` → TaskGroup.group_id
 - `[TICKET_SUBJECT]` → TaskGroup.subject
 - `[PHASE_NAME]` → TaskGroup.phase
@@ -434,6 +478,7 @@ TaskGroup {
 - Technical Details section → TaskGroup.technical_details (4 subsections)
 
 **Task-to-Ticket Mapping Table**:
+
 - For each TaskGroup, add row:
   - Task IDs: "T009-T020" (format as range or list)
   - Group ID: "G01"
@@ -445,22 +490,26 @@ TaskGroup {
 **Statistics Section**:
 
 **Tickets by Phase**:
+
 - Count tickets per phase (setup, foundational, user_story with story labels, polish)
 - Count tasks per phase
 - Calculate avg tasks/ticket per phase
 
 **Tickets by Issue Type**:
+
 - Count "Task" issue types
 - Count "Story" issue types
 - Calculate percentages
 
 **Grouping Effectiveness**:
+
 - Report target group size: 5-8
 - Report actual range: min-max
 - Report median group size
 - Report tasks successfully grouped vs isolated
 
 **Write to File**:
+
 - Write complete jira-tickets.md to `JIRA_TICKETS_FILE` path
 - Ensure proper markdown formatting
 - Preserve newlines and structure
@@ -478,7 +527,8 @@ TaskGroup {
 **For each ticket in ticket_groups[]**:
 
 1. **Display Ticket Summary**:
-   ```
+
+   ```text
    Ticket G01: Implement task grouping algorithm for JIRA ticket generation
    Phase: User Story 1 (US1)
    Tasks: T009-T020 (12 tasks)
@@ -490,7 +540,8 @@ TaskGroup {
    ```
 
 2. **Prompt User**:
-   ```
+
+   ```text
    Options:
    [A]ccept - Use ticket as-is, continue to next
    [E]dit - Modify ticket fields
@@ -557,6 +608,7 @@ TaskGroup {
 **Skip if**: `CREATE_IN_JIRA == false` (default dry-run mode)
 
 **Prerequisites Check**:
+
 1. Verify jira-db skill available (attempt to call skill, handle failure gracefully)
 2. Verify PROJECT_KEY provided (required, error if missing)
 3. If EPIC_KEY provided, validate Epic exists (call jira-db to check)
@@ -565,7 +617,8 @@ TaskGroup {
 ### Validate Epic (if EPIC_KEY provided)
 
 **Call jira-db skill**:
-```
+
+```yaml
 Skill: "jira-db"
 Action: "validate_epic"
 Parameters: {
@@ -575,6 +628,7 @@ Parameters: {
 ```
 
 **Handle Response**:
+
 - Success: Epic exists → Continue
 - Error "Epic not found": ERROR with message "Epic [EPIC_KEY] not found in JIRA. Verify Epic key and try again."
 - Error "Different project": WARN "Epic [EPIC_KEY] belongs to project [OTHER_PROJECT], not [PROJECT_KEY]. Cross-project linking may be intentional for portfolio management. Continue? (yes/no)"
@@ -582,7 +636,8 @@ Parameters: {
 ### Resolve Team (if TEAM_NAME provided)
 
 **Call jira-db skill**:
-```
+
+```yaml
 Skill: "jira-db"
 Action: "resolve_team"
 Parameters: {
@@ -591,6 +646,7 @@ Parameters: {
 ```
 
 **Handle Response**:
+
 - Success: team_id returned → Store in TEAM_ID variable
 - Error "Team not found": ERROR with message "Team '[TEAM_NAME]' not found. Available teams: [LIST_FROM_CACHE]. Update team name and try again."
 
@@ -603,6 +659,7 @@ Parameters: {
 JIRA rich text fields require ADF format. Convert Description, Test Plan, Technical Details from markdown to ADF:
 
 **Conversion Rules**:
+
 - Headings: `## Text` → `{"type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Text"}]}`
 - Bold: `**Text**` → `{"type": "text", "text": "Text", "marks": [{"type": "strong"}]}`
 - Bullet list: `- Item` → `{"type": "bulletList", "content": [{"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Item"}]}]}]}`
@@ -612,6 +669,7 @@ JIRA rich text fields require ADF format. Convert Description, Test Plan, Techni
 - Paragraph: Regular text → `{"type": "paragraph", "content": [{"type": "text", "text": "..."}]}`
 
 **ADF Document Structure**:
+
 ```json
 {
   "type": "doc",
@@ -625,6 +683,7 @@ JIRA rich text fields require ADF format. Convert Description, Test Plan, Techni
 ```
 
 **Convert Each Field**:
+
 - description_adf = convert_markdown_to_adf(ticket.description)
 - test_plan_adf = convert_markdown_to_adf(ticket.test_plan)
 - technical_details_adf = convert_markdown_to_adf(ticket.technical_details)
@@ -632,7 +691,8 @@ JIRA rich text fields require ADF format. Convert Description, Test Plan, Techni
 **Create JIRA Issue via jira-db skill**:
 
 **Call jira-db skill**:
-```
+
+```yaml
 Skill: "jira-db"
 Action: "create_issue"
 Parameters: {
@@ -648,25 +708,29 @@ Parameters: {
 ```
 
 **Handle Response**:
+
 - Success: JIRA key returned (e.g., "PM-12345") → Store in ticket.jira_key
 - Error "Custom field missing": ERROR with message "Custom field [FIELD_ID] not found in JIRA. Configure field mappings or contact JIRA admin."
 - Error "Permission denied": ERROR with message "Insufficient permissions to create issues in project [PROJECT_KEY]. Verify jira-db credentials."
 - Error "Project not found": ERROR with message "Project [PROJECT_KEY] not found in JIRA. Verify project key."
 
 **Progress Message**:
-```
+
+```text
 Created PM-12345 [Story]: Implement task grouping algorithm (Tasks T009-T020)
 Created PM-12346 [Story]: Generate AI-friendly 4-field ticket structure (Tasks T021-T028)
 ...
 ```
 
 **Update jira-tickets.md**:
+
 - Re-read jira-tickets.md
 - Update Task-to-Ticket Mapping table with JIRA keys
 - Update each ticket header with: `**JIRA Key**: PM-12345`
 - Re-write jira-tickets.md
 
 **Error Recovery**:
+
 - If ticket creation fails for one ticket, log error, continue with remaining tickets
 - Report all failures at end: "3 tickets created successfully, 1 failed: [ERROR_DETAILS]"
 
@@ -677,7 +741,8 @@ Created PM-12346 [Story]: Generate AI-friendly 4-field ticket structure (Tasks T
 **Purpose**: Display completion summary and next steps
 
 **Summary Output**:
-```
+
+```text
 ==========================================================
 JIRA Tickets Generation Complete
 ==========================================================
@@ -739,51 +804,63 @@ Next Steps
 ## Error Handling
 
 **Missing tasks.md**:
+
 - ERROR: "tasks.md not found at [TASKS_FILE]. Run `/speckit.tasks` first to generate task breakdown."
 - Exit with error code
 
 **Empty tasks.md**:
+
 - ERROR: "tasks.md is empty. Run `/speckit.tasks` to generate tasks."
 - Exit with error code
 
 **Invalid tasks.md format**:
+
 - WARN: "Task T### has invalid format. Expected: `- [ ] T### [P?] [Story?] Description with file path`"
 - Continue processing other tasks
 
 **Tasks without file paths**:
+
 - WARN: "Task T### missing file path. Technical Details may be incomplete."
 - Continue processing
 
 **Large task count (200+)**:
+
 - WARN: "Feature has 200+ tasks. Consider splitting into multiple features for better manageability."
 - Continue processing
 
 **jira-db skill unavailable** (when --create used):
+
 - ERROR: "jira-db skill not found or not configured. Install jira-db skill and configure JIRA credentials. See: [SETUP_LINK]"
 - Exit with error code
 
 **Team name not found**:
+
 - ERROR: "Team '[TEAM_NAME]' not found. Available teams: [LIST]. Use correct team name or omit --team flag."
 - Exit with error code
 
 **Invalid Epic key**:
+
 - ERROR: "Epic [EPIC_KEY] not found in JIRA. Verify Epic key or omit --epic flag."
 - Exit with error code
 
 **Epic from different project**:
+
 - WARN: "Epic [EPIC_KEY] belongs to project [OTHER_PROJECT], not [PROJECT_KEY]. Cross-project linkage may be intentional. Continue? (yes/no)"
 - If no: Exit
 - If yes: Continue with cross-project Epic link
 
 **Custom field IDs missing**:
+
 - ERROR: "Custom field [FIELD_ID] not found in JIRA instance. Configure field mappings or contact JIRA administrator. Expected fields: Test Plan (customfield_10332), Technical Details (customfield_10301)"
 - Exit with error code
 
 **Conflicting story labels**:
+
 - WARN: "Task T### has multiple story labels or belongs to multiple phases. Using first occurrence: [LABEL]"
 - Continue processing
 
 **Mixed phase grouping** (should not occur after Pass 1):
+
 - WARN: "Ticket G## contains tasks from multiple phases: [PHASES]. Using majority phase: [PHASE] for issue type determination."
 - Continue processing
 
@@ -792,42 +869,55 @@ Next Steps
 ## Usage Examples
 
 ### Example 1: Dry-Run (Default)
+
 ```bash
 /speckit.jira-tasks
 ```
+
 **Result**: Generates jira-tickets.md, no JIRA creation
 
 ### Example 2: Create in JIRA
+
 ```bash
 /speckit.jira-tasks --create --project PM --team "Platform Team"
 ```
+
 **Result**: Generates jira-tickets.md, creates tickets in JIRA project PM, assigns to Platform Team
 
 ### Example 3: Create with Epic
+
 ```bash
 /speckit.jira-tasks --create --project PM --team "Backend Team" --epic PM-1000
 ```
+
 **Result**: Creates tickets with Epic PM-1000 as parent
 
 ### Example 4: Interactive Review
+
 ```bash
 /speckit.jira-tasks --interactive
 ```
+
 **Result**: Prompts for review/edit of each ticket, saves to jira-tickets.md
 
 ### Example 5: Interactive + JIRA Creation
+
 ```bash
 /speckit.jira-tasks --interactive --create --project PM --team "Platform Team"
 ```
+
 **Result**: Review tickets, edit as needed, then create in JIRA
 
 ### Example 6: Preview with Dry-Run
+
 ```bash
 /speckit.jira-tasks --dry-run
 ```
+
 **Result**: Explicit dry-run (same as default), preview tickets without creation
 
 ### Example 7: Full Workflow
+
 ```bash
 # 1. Generate and review locally
 /speckit.jira-tasks

@@ -13,11 +13,13 @@
 **Structure**: `[Verb] [Object] [Purpose/Outcome]`
 
 **Examples**:
+
 - "Implement task grouping algorithm for ticket generation"
 - "Create JIRA tickets via jira-db skill with team assignment"
 - "Add interactive review mode for ticket refinement"
 
 **Guidelines**:
+
 - Start with action verb (Implement, Create, Add, Build, Configure, etc.)
 - Include the primary object being worked on
 - Briefly state the purpose or outcome
@@ -79,6 +81,7 @@
   - Large task count (200+): Warn about scope, suggest splitting
 
 **AI-Friendly Style Principles**:
+
 - Use **bold labels** for all subsection headers
 - Write in bullet points or short paragraphs
 - Avoid ambiguous terms ("robust", "intuitive" without quantification)
@@ -124,6 +127,7 @@
   - Test with tasks missing file paths: Verify warning in output
 
 **Testing Guidelines**:
+
 - If automated tests requested: Specify test file locations and test names
 - If manual verification only: Provide clear step-by-step instructions
 - Include acceptance criteria from spec.md acceptance scenarios
@@ -181,6 +185,7 @@
   - **Cross-ticket**: Ticket G02 (JIRA integration) depends on this ticket's grouping algorithm
 
 **Implementation Guidelines**:
+
 - Provide enough detail for an LLM to implement without asking questions
 - Include exact file paths (absolute when possible, relative to repo root otherwise)
 - Reference data model entities from data-model.md where applicable
@@ -192,18 +197,21 @@
 ## Usage Notes
 
 **For Command Implementation**:
+
 - Use this template to generate ticket content in `/speckit.jira-tasks` command
 - Replace placeholders with actual content from TaskGroup entities
 - Maintain all 4 fields in every generated ticket
 - Apply AI-friendly style: bold labels, bullet points, explicit structure
 
 **For JIRA Integration**:
+
 - **Subject** → JIRA `summary` field (string)
 - **Description** → JIRA `description` field (ADF format)
 - **Test Plan** → JIRA `customfield_10332` (ADF format)
 - **Technical Details** → JIRA `customfield_10301` (ADF format)
 
 **For Human Review**:
+
 - All fields should be readable in jira-tickets.md (markdown format)
 - Tickets can be edited in jira-tickets.md before JIRA creation
 - Interactive mode allows field-by-field editing
