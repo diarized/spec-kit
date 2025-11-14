@@ -13,6 +13,14 @@
 - Q: What JIRA issue type should be used for generated tickets? → A: Infer issue type from content - setup/foundational phase tasks become "Task" issue type, user story phase tasks become "Story" issue type
 - Q: Should the command set Story Points field in JIRA? → A: No - leave story points unspecified, allowing teams to estimate during their refinement process
 
+### Session 2025-11-14
+
+- Q: How should the `/speckit.jira-tasks` command be distributed to users? → A: Add to release build process - command integrated into GitHub release ZIP templates so it's automatically included during `specify init` for all new projects, making it a standard spec-kit command alongside `/speckit.tasks`
+- Q: Where should the jira-ticket-template.md and jira-tickets-template.md files be stored? → A: Create in repo's templates/ directory (templates/jira-ticket-template.md and templates/jira-tickets-template.md) that get copied to .specify/templates/ during installation, following the same pattern as tasks-template.md
+- Q: Should a new jira-tasks-setup.sh script be created or should existing check-prerequisites.sh be extended? → A: Extend existing check-prerequisites.sh in scripts/bash/ to handle both tasks and jira-tasks commands via flags (e.g., --for-jira-tasks), keeping validation logic centralized and avoiding duplication
+- Q: Should this be implemented as a Python script, shell script, or Claude Code slash command? → A: Implement as Claude Code slash command (markdown file in templates/commands/jira-tasks.md) - Claude interprets instructions to parse tasks, group them, generate tickets, and call jira-db skill for JIRA operations, following same pattern as /speckit.tasks
+- Q: How should the command's YAML frontmatter specify the prerequisite script call? → A: Use scripts section with --for-jira-tasks flag (e.g., `scripts: { sh: "scripts/bash/check-prerequisites.sh --json --for-jira-tasks" }`) so script returns both TASKS_FILE input path and JIRA_TICKETS_FILE output path in JSON response
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Generate JIRA-sized Work Units (Priority: P1)
@@ -110,29 +118,31 @@ As a technical lead, I want to review and modify generated ticket content before
 
 ### Functional Requirements
 
-- **FR-001**: System MUST read tasks.md from current feature's spec directory (e.g., specs/###-feature-name/tasks.md)
-- **FR-002**: System MUST parse task checklist format: `- [ ] [TaskID] [P?] [Story?] Description with file path`
-- **FR-003**: System MUST group tasks into work units targeting 1-3 story points (approximately 1-3 days of work)
-- **FR-004**: System MUST preserve original task IDs within grouped tickets for traceability
-- **FR-005**: System MUST generate tickets with 4-field structure: Subject, Description, Test Plan, Technical Details
-- **FR-006**: System MUST follow AI-friendly documentation style as defined in ~/.claude/AI-FRIENDLY.md
-- **FR-007**: System MUST prefer grouping by user story label ([US1], [US2], etc.) as primary organization
-- **FR-008**: System MUST create separate groups for Setup (Phase 1), Foundational (Phase 2), and Polish (final phase) tasks
-- **FR-009**: System MUST output results to jira-tickets.md in the same feature directory as tasks.md
-- **FR-010**: System MUST support `--dry-run` flag to preview ticket generation without creating in JIRA
-- **FR-011**: System MUST support `--create` flag with `--project`, `--team`, and optional `--epic` options to auto-create JIRA tickets via jira-db skill
-- **FR-012**: System MUST resolve team names to team IDs using jira-db's team resolution capability
-- **FR-013**: System MUST map 4-field structure to JIRA fields: Subject→summary, Description→description, Test Plan→customfield_10332, Technical Details→customfield_10301
-- **FR-014**: System MUST use ADF (Atlassian Document Format) for rich text fields (description, Test Plan, Technical Details)
-- **FR-015**: System MUST report mapping between task IDs and created JIRA ticket keys
-- **FR-016**: When `--epic JIRA_EPIC_NUMBER` flag is provided, system MUST set the Epic parent link field for all created tickets
-- **FR-017**: When `--epic` flag is provided, system MUST validate that the Epic key exists in JIRA before creating tickets
-- **FR-018**: System MUST infer JIRA issue type from task phase: Setup/Foundational phase tickets use "Task" type, User Story phase tickets use "Story" type
-- **FR-019**: Description field MUST include: purpose, tasks covered (by ID), affected systems/files, workflows, stakeholders, corner cases
-- **FR-020**: Test Plan field MUST describe verification approach for each major component in the ticket
-- **FR-021**: Technical Details field MUST list: specific files/modules, functions to add/modify, implementation sequence, dependencies
-- **FR-022**: System MUST handle missing or optional tasks.md sections gracefully (e.g., if no Test Plan section exists in tasks.md)
-- **FR-023**: System MUST validate that tasks.md follows expected format before attempting to group
+- **FR-001**: Command YAML frontmatter MUST specify scripts section with --for-jira-tasks flag: `scripts: { sh: "scripts/bash/check-prerequisites.sh --json --for-jira-tasks" }`
+- **FR-002**: check-prerequisites.sh MUST return JSON with TASKS_FILE (input path to tasks.md) and JIRA_TICKETS_FILE (output path to jira-tickets.md) when called with --for-jira-tasks flag
+- **FR-003**: System MUST read tasks.md from path specified in TASKS_FILE from check-prerequisites.sh JSON output
+- **FR-004**: System MUST parse task checklist format: `- [ ] [TaskID] [P?] [Story?] Description with file path`
+- **FR-005**: System MUST group tasks into work units targeting 1-3 story points (approximately 1-3 days of work)
+- **FR-006**: System MUST preserve original task IDs within grouped tickets for traceability
+- **FR-007**: System MUST generate tickets with 4-field structure: Subject, Description, Test Plan, Technical Details
+- **FR-008**: System MUST follow AI-friendly documentation style as defined in ~/.claude/AI-FRIENDLY.md
+- **FR-009**: System MUST prefer grouping by user story label ([US1], [US2], etc.) as primary organization
+- **FR-010**: System MUST create separate groups for Setup (Phase 1), Foundational (Phase 2), and Polish (final phase) tasks
+- **FR-011**: System MUST output results to path specified in JIRA_TICKETS_FILE from check-prerequisites.sh JSON output
+- **FR-012**: System MUST support `--dry-run` flag to preview ticket generation without creating in JIRA
+- **FR-013**: System MUST support `--create` flag with `--project`, `--team`, and optional `--epic` options to auto-create JIRA tickets via jira-db skill
+- **FR-014**: System MUST resolve team names to team IDs using jira-db's team resolution capability
+- **FR-015**: System MUST map 4-field structure to JIRA fields: Subject→summary, Description→description, Test Plan→customfield_10332, Technical Details→customfield_10301
+- **FR-016**: System MUST use ADF (Atlassian Document Format) for rich text fields (description, Test Plan, Technical Details)
+- **FR-017**: System MUST report mapping between task IDs and created JIRA ticket keys
+- **FR-018**: When `--epic JIRA_EPIC_NUMBER` flag is provided, system MUST set the Epic parent link field for all created tickets
+- **FR-019**: When `--epic` flag is provided, system MUST validate that the Epic key exists in JIRA before creating tickets
+- **FR-020**: System MUST infer JIRA issue type from task phase: Setup/Foundational phase tickets use "Task" type, User Story phase tickets use "Story" type
+- **FR-021**: Description field MUST include: purpose, tasks covered (by ID), affected systems/files, workflows, stakeholders, corner cases
+- **FR-022**: Test Plan field MUST describe verification approach for each major component in the ticket
+- **FR-023**: Technical Details field MUST list: specific files/modules, functions to add/modify, implementation sequence, dependencies
+- **FR-024**: System MUST handle missing or optional tasks.md sections gracefully (e.g., if no Test Plan section exists in tasks.md)
+- **FR-025**: System MUST validate that tasks.md follows expected format before attempting to group
 
 ### Key Entities
 
@@ -142,6 +152,8 @@ As a technical lead, I want to review and modify generated ticket content before
 - **Epic**: JIRA issue type that serves as parent container for User Stories and Tasks, used for grouping related work and tracking timelines (optional parent for generated tickets)
 - **Field Mapping**: Configuration that maps 4-field structure to JIRA issue fields (including custom field IDs)
 - **Task-to-Ticket Mapping**: Traceability record linking original task IDs to created JIRA ticket keys
+- **JIRA Ticket Template**: Markdown template file (templates/jira-ticket-template.md in repo, copied to .specify/templates/ during installation) defining canonical 4-field structure for individual tickets
+- **JIRA Tickets Output Template**: Markdown template file (templates/jira-tickets-template.md in repo, copied to .specify/templates/ during installation) defining structure for generated jira-tickets.md output file with all tickets, mappings, and statistics
 
 ## Success Criteria *(mandatory)*
 
@@ -160,10 +172,12 @@ As a technical lead, I want to review and modify generated ticket content before
 
 ## Assumptions
 
+- Command implemented as Claude Code slash command (markdown specification file) that Claude interprets at runtime, not as compiled Python/shell script
+- Claude has natural language understanding sufficient to parse tasks.md format, group tasks by heuristics, and generate well-structured ticket content
 - Users have already run `/speckit.tasks` to generate tasks.md before running `/speckit.jira-tasks`
 - Feature follows standard Spec Kit directory structure (specs/###-feature-name/)
 - tasks.md follows the standard template format with proper task IDs, story labels, and file paths
-- When JIRA creation is requested, jira-db skill is properly configured with valid credentials
+- When JIRA creation is requested, jira-db skill is properly configured with valid credentials and accessible via skill invocation
 - JIRA instance has custom fields for Test Plan (customfield_10332) and Technical Details (customfield_10301)
 - Task grouping targets work units suitable for 1-3 days of development effort (story points will be estimated by team during refinement)
 - AI-friendly documentation style from ~/.claude/AI-FRIENDLY.md is applicable to JIRA ticket content
@@ -172,6 +186,9 @@ As a technical lead, I want to review and modify generated ticket content before
 
 ## Dependencies
 
+- **Build System**: Command files must be added to templates/commands/ and integrated into GitHub release workflow (.github/workflows/release.yml and create-release-packages.sh) to be included in spec-kit distribution ZIPs
+- **Distribution**: Command distributed via GitHub release ZIP (e.g., spec-kit-template-claude-sh-v{version}.zip) and installed during `specify init` into .claude/commands/ directory
+- **Template Files**: New templates must be created in templates/ directory (jira-ticket-template.md and jira-tickets-template.md) and will be copied to .specify/templates/ during installation, following same pattern as tasks-template.md
 - **Prerequisite**: `/speckit.tasks` must have been run to generate tasks.md
 - **External**: jira-db skill must be available and configured (for P3 auto-creation feature)
 - **External**: ~/.claude/AI-FRIENDLY.md must exist to guide documentation style

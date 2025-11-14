@@ -1,6 +1,6 @@
 # Implementation Plan: JIRA Tasks Integration
 
-**Branch**: `001-jira-tasks-integration` | **Date**: 2025-11-12 | **Spec**: [spec.md](spec.md)
+**Branch**: `001-jira-tasks-integration` | **Date**: 2025-11-12 | **Updated**: 2025-11-14 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `/specs/001-jira-tasks-integration/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
@@ -8,6 +8,8 @@
 ## Summary
 
 This feature adds a new `/speckit.jira-tasks` slash command that bridges AI-friendly micro-tasks from tasks.md with human project management in JIRA. The command groups granular tasks (T001, T002, etc.) into JIRA-sized work units (1-3 days of work), generates tickets with a 4-field AI-friendly structure (Subject, Description, Test Plan, Technical Details), and optionally auto-creates tickets in JIRA using the jira-db skill with team assignment and Epic association.
+
+**Distribution**: Command distributed via GitHub release ZIP (integrated into spec-kit's standard release process), installed automatically during `specify init` into `.claude/commands/` directory alongside existing spec-kit commands.
 
 **Primary Value**: Eliminates manual work of translating detailed AI task breakdowns into project management tickets while preserving traceability between systems.
 
@@ -134,51 +136,88 @@ specs/[###-feature]/
 ### Source Code (repository root)
 
 ```text
-.claude/
+# Template sources (in repository)
+templates/
 ├── commands/
-│   ├── speckit.tasks.md           # Existing command (reference for patterns)
-│   └── speckit.jira-tasks.md      # NEW: Main command file for this feature
-│
+│   ├── tasks.md                    # Existing command (reference pattern)
+│   └── jira-tasks.md               # NEW: Command definition source
+├── tasks-template.md               # Existing (reference pattern)
+├── jira-ticket-template.md         # NEW: Individual ticket structure template
+└── jira-tickets-template.md        # NEW: Output file structure template
+
+# Script modifications
+scripts/
+└── bash/
+    └── check-prerequisites.sh      # MODIFIED: Add --for-jira-tasks flag support
+
+# Release workflow modifications
+.github/
+└── workflows/
+    ├── release.yml                 # MODIFIED: Add jira-tasks.md to triggers
+    └── scripts/
+        └── create-release-packages.sh  # MODIFIED: Process new command
+
+# Installed files (after `specify init`, in user's project)
+.claude/
+└── commands/
+    └── speckit.jira-tasks.md       # Copied from templates/commands/jira-tasks.md
+
 .specify/
 ├── templates/
-│   ├── jira-ticket-template.md    # NEW: Template for individual JIRA ticket structure
-│   └── jira-tickets-template.md   # NEW: Template for jira-tickets.md output file
+│   ├── jira-ticket-template.md    # Copied from templates/jira-ticket-template.md
+│   └── jira-tickets-template.md   # Copied from templates/jira-tickets-template.md
 └── scripts/
     └── bash/
-        └── jira-tasks-setup.sh     # NEW: Setup script (validates prerequisites, returns paths)
+        └── check-prerequisites.sh  # Copied with --for-jira-tasks support
 ```
 
 **Structure Decision**:
 
-This feature extends Spec Kit's command infrastructure rather than adding new source code. The implementation follows Claude Code's slash command pattern where command logic is expressed in Markdown files that Claude Code executes.
+This feature extends Spec Kit's command infrastructure following the established distribution pattern:
+
+1. **Template Sources (in repo)**: Command and template files authored in `templates/` directory
+2. **Release Processing**: GitHub workflow transforms templates into agent-specific formats
+3. **Installation**: `specify init` downloads release ZIP and extracts to user's project
+4. **No Python code**: Feature implemented purely as Claude slash command (markdown)
 
 **Key Files**:
 
-1. **`.claude/commands/speckit.jira-tasks.md`**: Main command file containing:
-   - Command description (frontmatter)
-   - Execution workflow (Outline section)
-   - Task grouping logic (Task Grouping Rules section)
-   - JIRA integration logic (JIRA Creation section)
-   - Error handling (Edge Cases section)
+1. **`templates/commands/jira-tasks.md`** (source in repo): Main command definition
+   - YAML frontmatter with `scripts: { sh: "scripts/bash/check-prerequisites.sh --json --for-jira-tasks" }`
+   - Command description
+   - Execution workflow (10 steps)
+   - Task grouping algorithm (5-pass multi-dimensional)
+   - JIRA integration via jira-db skill
+   - Error handling for all edge cases
 
-2. **`.specify/templates/jira-ticket-template.md`**: Defines 4-field structure:
-   - Subject (single sentence)
-   - Description (purpose, tasks covered, affected systems)
-   - Test Plan (verification approach)
-   - Technical Details (files, functions, implementation sequence)
+2. **`templates/jira-ticket-template.md`** (source in repo): 4-field structure
+   - Subject (50-100 char, verb+object+purpose)
+   - Description (6 subsections with bold labels)
+   - Test Plan (4 subsections)
+   - Technical Details (4 subsections)
 
-3. **`.specify/templates/jira-tickets-template.md`**: Defines output file format:
-   - Feature header with metadata
-   - Grouped tickets section
-   - Task-to-ticket mapping table
-   - Statistics summary
+3. **`templates/jira-tickets-template.md`** (source in repo): Output file format
+   - Feature header with metadata (generated timestamp, counts)
+   - Per-ticket sections (all 4 fields)
+   - Task-to-Ticket mapping table
+   - Statistics (by phase, by issue type)
+   - Usage instructions
 
-4. **`.specify/scripts/bash/jira-tasks-setup.sh`**: Bash setup script:
-   - Validates tasks.md exists
-   - Returns absolute paths as JSON (FEATURE_DIR, TASKS_FILE, OUTPUT_FILE)
-   - Checks for jira-db skill availability (warning if missing)
+4. **`scripts/bash/check-prerequisites.sh`** (modified): Prerequisite validation
+   - NEW: Accepts `--for-jira-tasks` flag
+   - NEW: Returns `TASKS_FILE` and `JIRA_TICKETS_FILE` in JSON when flag present
+   - Existing: Validates git repo, branch pattern, feature directory
+   - Existing: Returns `FEATURE_DIR`, `FEATURE_NUM`, `FEATURE_NAME`, `BRANCH`
 
-**No Python code changes needed**: The existing `src/specify_cli/` structure remains unchanged as this feature operates entirely within Claude Code's command system.
+5. **`.github/workflows/release.yml`** (modified): Release triggers
+   - Add `templates/commands/jira-tasks.md` to watch paths
+   - Add `templates/jira-*.md` to watch paths
+
+6. **`.github/workflows/scripts/create-release-packages.sh`** (modified): Package builder
+   - Process new command template (convert placeholders, copy to agent dirs)
+   - Copy jira-*.md templates to package
+
+**No Python/src/ changes needed**: The existing `src/specify_cli/` structure remains unchanged as this feature operates entirely within Claude Code's command system and spec-kit's template infrastructure.
 
 ## Complexity Tracking
 
@@ -254,10 +293,36 @@ When running `/speckit.tasks`, the following should guide task breakdown:
 ### Key Implementation Files
 
 From Project Structure section:
-1. `.claude/commands/speckit.jira-tasks.md` - Main command (highest complexity)
-2. `.specify/templates/jira-ticket-template.md` - 4-field structure template
-3. `.specify/templates/jira-tickets-template.md` - Output file template
-4. `.specify/scripts/bash/jira-tasks-setup.sh` - Setup/validation script
+1. `templates/commands/jira-tasks.md` - Main command definition (source in repo)
+2. `templates/jira-ticket-template.md` - 4-field structure template (source in repo)
+3. `templates/jira-tickets-template.md` - Output file template (source in repo)
+4. `scripts/bash/check-prerequisites.sh` - Modified to add --for-jira-tasks flag
+5. `.github/workflows/release.yml` - Modified to trigger on new templates
+6. `.github/workflows/scripts/create-release-packages.sh` - Modified to process new command
+
+### Critical Clarifications from 2025-11-14
+
+**Distribution Strategy** (Decision from clarification session):
+- Command MUST be integrated into GitHub release workflow
+- Source files in `templates/` directory (not `.specify/` or `.claude/`)
+- Release process copies to `.claude/commands/` and `.specify/templates/` during `specify init`
+
+**Script Architecture** (Decision from clarification session):
+- Extend existing `check-prerequisites.sh` with `--for-jira-tasks` flag
+- Do NOT create new `jira-tasks-setup.sh` script
+- Script returns `TASKS_FILE` and `JIRA_TICKETS_FILE` in JSON
+
+**Implementation Approach** (Decision from clarification session):
+- Claude Code slash command (markdown specification)
+- NOT Python script, NOT shell script, NOT hybrid
+- Claude interprets instructions and calls jira-db skill directly
+
+**YAML Frontmatter** (Decision from clarification session):
+```yaml
+scripts:
+  sh: scripts/bash/check-prerequisites.sh --json --for-jira-tasks
+  ps: scripts/powershell/check-prerequisites.ps1 -Json -ForJiraTasks
+```
 
 ### Testing Strategy
 
@@ -266,6 +331,41 @@ Manual verification against acceptance scenarios (per constitution - tests not r
 - P2: Verify all 4 fields populated with AI-friendly content
 - P3: Verify tickets created in JIRA with correct metadata
 - P4: Verify interactive editing updates jira-tickets.md
+
+### Implementation Phases
+
+**Phase 1: Template Creation** (P1, P2)
+- Create `templates/commands/jira-tasks.md` with command logic
+- Create `templates/jira-ticket-template.md` with 4-field structure
+- Create `templates/jira-tickets-template.md` with output format
+- Implement task parsing, grouping algorithm (5-pass)
+- Implement ticket content generation with AI-friendly style
+
+**Phase 2: Script Extension** (P1)
+- Modify `scripts/bash/check-prerequisites.sh` to accept `--for-jira-tasks` flag
+- Add JSON output fields: `TASKS_FILE`, `JIRA_TICKETS_FILE`
+- Validate tasks.md exists before command execution
+- (Optional) Add PowerShell version for Windows support
+
+**Phase 3: Release Integration** (distribution)
+- Modify `.github/workflows/release.yml` to watch new template paths
+- Modify `.github/workflows/scripts/create-release-packages.sh` to process new command
+- Test release build locally
+- Verify ZIP contains new command and templates in correct locations
+
+**Phase 4: JIRA Integration** (P3)
+- Implement jira-db skill invocation in command
+- Implement markdown-to-ADF conversion
+- Add `--create`, `--project`, `--team`, `--epic`, `--dry-run` flag handling
+- Implement Epic validation, team resolution
+- Add error handling for all jira-db failure modes
+
+**Phase 5: Interactive Mode** (P4, optional)
+- Implement `--interactive` flag handling
+- Add ticket review prompts (Accept/Edit/Split/Merge/Skip/Quit)
+- Implement field editing
+- Implement split/merge with field regeneration
+- Save changes back to jira-tickets.md
 
 ---
 

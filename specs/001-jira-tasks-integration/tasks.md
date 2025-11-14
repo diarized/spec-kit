@@ -1,11 +1,13 @@
 # Tasks: JIRA Tasks Integration
 
 **Input**: Design documents from `/specs/001-jira-tasks-integration/`
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, quickstart.md
+**Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, quickstart.md
 
 **Tests**: Tests are NOT requested in the specification. Manual verification against acceptance scenarios will be used.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+
+**UPDATED**: 2025-11-14 - Tasks regenerated based on clarification decisions (distribution via GitHub release workflow, extend check-prerequisites.sh, templates in repo's templates/ directory)
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -16,31 +18,34 @@
 ## Path Conventions
 
 This feature adds files to existing Spec Kit repository structure:
-- **Commands**: `.claude/commands/`
-- **Templates**: `.specify/templates/`
-- **Scripts**: `.specify/scripts/bash/`
+- **Template sources (repo)**: `templates/`, `templates/commands/`
+- **Script modifications**: `scripts/bash/check-prerequisites.sh`
+- **Workflow modifications**: `.github/workflows/`
+- **Installed locations (user project)**: `.claude/commands/`, `.specify/templates/`
 
 ---
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup (Template Infrastructure)
 
-**Purpose**: Create template files and setup script infrastructure
+**Purpose**: Create template files that will be distributed via GitHub release workflow
 
-- [X] T001 Create jira-ticket-template.md defining 4-field structure in .specify/templates/jira-ticket-template.md
-- [X] T002 [P] Create jira-tickets-template.md defining output file format in .specify/templates/jira-tickets-template.md
-- [X] T003 [P] Create jira-tasks-setup.sh bash script for path validation in .specify/scripts/bash/jira-tasks-setup.sh
+- [X] T001 Create jira-ticket-template.md defining 4-field structure (Subject, Description, Test Plan, Technical Details) in templates/jira-ticket-template.md
+- [X] T002 [P] Create jira-tickets-template.md defining output file format with metadata, tickets, mapping table, statistics in templates/jira-tickets-template.md
+- [X] T003 [P] Create command definition file jira-tasks.md with YAML frontmatter in templates/commands/jira-tasks.md
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## Phase 2: Foundational (Script & Workflow Integration)
 
-**Purpose**: Core command file structure that user stories will build upon
+**Purpose**: Core infrastructure that MUST be complete before ANY user story implementation
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [X] T004 Create speckit.jira-tasks.md command file with frontmatter and basic structure in .claude/commands/speckit.jira-tasks.md
-- [X] T005 Add User Input section to capture optional arguments ($ARGUMENTS) in .claude/commands/speckit.jira-tasks.md
-- [X] T006 Add Outline section with 5-step workflow structure in .claude/commands/speckit.jira-tasks.md
+- [X] T004 Modify check-prerequisites.sh to accept --for-jira-tasks flag in scripts/bash/check-prerequisites.sh
+- [X] T005 Add JSON output fields TASKS_FILE and JIRA_TICKETS_FILE when --for-jira-tasks flag present in scripts/bash/check-prerequisites.sh
+- [X] T006 [P] Modify release.yml to add templates/commands/jira-tasks.md to watch paths in .github/workflows/release.yml
+- [X] T007 [P] Modify release.yml to add templates/jira-*.md to watch paths in .github/workflows/release.yml
+- [X] T008 [P] Modify create-release-packages.sh to process new command template in .github/workflows/scripts/create-release-packages.sh
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -48,297 +53,207 @@ This feature adds files to existing Spec Kit repository structure:
 
 ## Phase 3: User Story 1 - Generate JIRA-sized Work Units (Priority: P1) 🎯 MVP
 
-**Goal**: Convert granular tasks from tasks.md into JIRA-sized work tickets (8-12 tickets for typical feature)
+**Goal**: Core task parsing and grouping functionality that converts tasks.md into jira-tickets.md with grouped work units
 
-**Independent Test**: Run `/speckit.jira-tasks` on existing tasks.md and verify jira-tickets.md contains properly grouped tickets with task IDs preserved for traceability
+**Independent Test**: Run `/speckit.jira-tasks` on specs/001-jira-tasks-integration/tasks.md and verify it produces jira-tickets.md with 8-12 properly grouped tickets
 
 ### Implementation for User Story 1
 
-- [X] T007 [P] [US1] Implement Setup step: Run jira-tasks-setup.sh and parse JSON paths in .claude/commands/speckit.jira-tasks.md
-- [X] T008 [P] [US1] Implement tasks.md parsing logic: Read file, extract task checklist items in .claude/commands/speckit.jira-tasks.md
-- [X] T009 [US1] Implement Task entity parsing: Extract ID, parallel marker, story label, description, file path in .claude/commands/speckit.jira-tasks.md
-- [X] T010 [US1] Implement phase detection logic: Infer setup/foundational/user_story/polish from context in .claude/commands/speckit.jira-tasks.md
-- [X] T011 [US1] Implement Pass 1 grouping: Separate tasks by phase (setup, foundational, polish) in .claude/commands/speckit.jira-tasks.md
-- [X] T012 [US1] Implement Pass 2 grouping: Group user_story phase tasks by story label [US1], [US2], etc. in .claude/commands/speckit.jira-tasks.md
-- [X] T013 [US1] Implement Pass 3 clustering: Within each story, cluster by file path similarity in .claude/commands/speckit.jira-tasks.md
-- [X] T014 [US1] Implement Pass 4 validation: Enforce 5-8 task target per group, preserve task order in .claude/commands/speckit.jira-tasks.md
-- [X] T015 [US1] Implement TaskGroup entity creation with group_id, tasks array, phase, story_label attributes in .claude/commands/speckit.jira-tasks.md
-- [X] T016 [US1] Add grouping statistics output: "12 groups formed - Setup: 1, Foundational: 1, US1: 3, US2: 4, US3: 2, Polish: 1" in .claude/commands/speckit.jira-tasks.md
+- [X] T009 [US1] Add YAML frontmatter with scripts section (sh: scripts/bash/check-prerequisites.sh --json --for-jira-tasks) in templates/commands/jira-tasks.md
+- [X] T010 [US1] Add Setup step (Step 1) to execute bash script and parse JSON output for FEATURE_DIR, TASKS_FILE, JIRA_TICKETS_FILE in templates/commands/jira-tasks.md
+- [X] T011 [US1] Add task parsing logic (Step 2) to read tasks.md and extract Task entities (id, parallel, story_label, description, file_path, phase) in templates/commands/jira-tasks.md
+- [X] T012 [US1] Implement Pass 1 of grouping algorithm - separate tasks by phase (setup/foundational/user_story/polish) in templates/commands/jira-tasks.md
+- [X] T013 [US1] Implement Pass 2 of grouping algorithm - group user_story phase tasks by story label ([US1], [US2], etc.) in templates/commands/jira-tasks.md
+- [X] T014 [US1] Implement Pass 3 of grouping algorithm - cluster by file path similarity within each story group in templates/commands/jira-tasks.md
+- [X] T015 [US1] Implement Pass 4 of grouping algorithm - validate group sizes (target 5-8 tasks), split oversized groups in templates/commands/jira-tasks.md
+- [X] T016 [US1] Implement Pass 5 of grouping algorithm - create TaskGroup entities with metadata (group_id, tasks, phase, story_label, task_ids) in templates/commands/jira-tasks.md
+- [X] T017 [US1] Add file output logic (Step 3) to generate jira-tickets.md using jira-tickets-template.md structure in templates/commands/jira-tasks.md
+- [X] T018 [US1] Add task-to-ticket mapping table generation with columns (Task IDs, Group ID, Phase, Story Label) in templates/commands/jira-tasks.md
+- [X] T019 [US1] Add statistics generation (tickets by phase, tickets by story, average group size, grouping effectiveness) in templates/commands/jira-tasks.md
+- [X] T020 [US1] Add progress output messages for each step (tasks loaded, groups formed, tickets generated, file written) in templates/commands/jira-tasks.md
 
-**Checkpoint**: At this point, User Story 1 should be fully functional - command can group tasks and output shows grouping statistics
+**Checkpoint**: At this point, User Story 1 should be fully functional and testable independently - command generates jira-tickets.md with grouped tasks
 
 ---
 
-## Phase 4: User Story 2 - Create Tickets with AI-Friendly 4-Field Structure (Priority: P2)
+## Phase 4: User Story 2 - AI-Friendly 4-Field Structure (Priority: P2)
 
-**Goal**: Generate ticket content following AI-friendly documentation style (Subject, Description, Test Plan, Technical Details)
+**Goal**: Generate well-structured ticket content with all 4 fields following AI-friendly documentation principles
 
-**Independent Test**: Examine generated jira-tickets.md and verify each ticket has all 4 fields with content following AI-friendly principles (explicit labeling, reduced ambiguity, canonical terminology)
+**Independent Test**: Examine generated jira-tickets.md and verify each ticket has Subject, Description, Test Plan, Technical Details with proper structure and explicit labeling
 
 ### Implementation for User Story 2
 
-- [X] T017 [P] [US2] Implement Subject generation: Single clear sentence from TaskGroup context in .claude/commands/speckit.jira-tasks.md
-- [X] T018 [P] [US2] Implement Description field generation with AI-friendly structure (Purpose, Tasks Covered, Affected Systems, etc.) in .claude/commands/speckit.jira-tasks.md
-- [X] T019 [P] [US2] Implement Test Plan field generation with verification approach and component tests in .claude/commands/speckit.jira-tasks.md
-- [X] T020 [P] [US2] Implement Technical Details field generation with files, functions, implementation sequence in .claude/commands/speckit.jira-tasks.md
-- [X] T021 [US2] Load AI-friendly documentation style from ~/.claude/AI-FRIENDLY.md for reference in .claude/commands/speckit.jira-tasks.md
-- [X] T022 [US2] Apply AI-friendly principles: Explicit labeling with bold markers (**Purpose:**, **Files to Modify:**) in .claude/commands/speckit.jira-tasks.md
-- [X] T023 [US2] Apply AI-friendly principles: Reduced ambiguity using structured lists instead of prose in .claude/commands/speckit.jira-tasks.md
-- [X] T024 [US2] Apply AI-friendly principles: Canonical terminology (consistent use of "task ID", "file path", etc.) in .claude/commands/speckit.jira-tasks.md
-- [X] T025 [US2] Create JiraTicket entities from TaskGroups with all 4 fields populated in .claude/commands/speckit.jira-tasks.md
-- [X] T026 [US2] Infer issue_type from phase: setup/foundational/polish → "Task", user_story → "Story" in .claude/commands/speckit.jira-tasks.md
-- [X] T027 [US2] Populate task_ids array with original task IDs from TaskGroup in .claude/commands/speckit.jira-tasks.md
-- [X] T028 [US2] Load jira-tickets-template.md and fill with generated ticket content in .claude/commands/speckit.jira-tasks.md
-- [X] T029 [US2] Write jira-tickets.md output file to FEATURE_DIR using template structure in .claude/commands/speckit.jira-tasks.md
-- [X] T030 [US2] Add ticket generation progress output: "12 tickets created" in .claude/commands/speckit.jira-tasks.md
+- [X] T021 [US2] Implement Subject generation (Step 4a) - create 50-100 char sentence with verb+object+purpose format from task descriptions in templates/commands/jira-tasks.md
+- [X] T022 [US2] Implement Description field generation (Step 4b) with 6 subsections - Purpose, Tasks Covered (by ID), Affected Systems, Key Workflows, Stakeholders, Edge Cases in templates/commands/jira-tasks.md
+- [X] T023 [US2] Implement Test Plan field generation (Step 4c) with 4 subsections - Verification Approach, Component Tests, Integration Test, Edge Case Validation in templates/commands/jira-tasks.md
+- [X] T024 [US2] Implement Technical Details field generation (Step 4d) with 4 subsections - Files to Modify, Functions to Add/Modify, Implementation Sequence, Dependencies in templates/commands/jira-tasks.md
+- [X] T025 [US2] Apply AI-friendly style principles - add bold labels for all subsection headers (**Purpose:**, **Tasks Covered:**, etc.) in templates/commands/jira-tasks.md
+- [X] T026 [US2] Extract file paths from task descriptions and populate Affected Systems and Files to Modify subsections in templates/commands/jira-tasks.md
+- [X] T027 [US2] Generate Implementation Sequence by ordering tasks within group based on dependencies and file relationships in templates/commands/jira-tasks.md
+- [X] T028 [US2] Add cross-ticket dependency detection - scan for task dependencies spanning multiple groups, note in Technical Details/Dependencies in templates/commands/jira-tasks.md
 
-**Checkpoint**: At this point, User Story 2 should be fully functional - command generates jira-tickets.md with AI-friendly 4-field structure
+**Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - tickets have complete, AI-friendly content
 
 ---
 
-## Phase 5: User Story 3 - Auto-Create JIRA Tickets via jira-db Skill (Priority: P3)
+## Phase 5: User Story 3 - Auto-Create via jira-db Skill (Priority: P3)
 
-**Goal**: Automatically create tickets in JIRA when --create flag is provided, with team assignment and Epic association
+**Goal**: Automatic JIRA ticket creation using jira-db skill with team assignment and Epic association
 
-**Independent Test**: Run `/speckit.jira-tasks --create --project PM --team "Team Name" --epic PM-1000` and verify tickets appear in JIRA with correct content, team assignment, issue types, and Epic parent link
+**Independent Test**: Run `/speckit.jira-tasks --create --project PM_TEST --team "Test Team" --epic PM_TEST-1000` and verify tickets appear in JIRA with correct metadata
 
 ### Implementation for User Story 3
 
-- [X] T031 [P] [US3] Parse command flags: --create, --project, --team, --epic, --dry-run in .claude/commands/speckit.jira-tasks.md
-- [X] T032 [P] [US3] Implement dry-run mode: Show what would be created without JIRA side effects in .claude/commands/speckit.jira-tasks.md
-- [X] T033 [US3] Validate --epic flag: Check Epic exists in JIRA before ticket creation via jira-db skill in .claude/commands/speckit.jira-tasks.md
-- [X] T034 [US3] Warn if Epic belongs to different project than --project flag in .claude/commands/speckit.jira-tasks.md
-- [X] T035 [US3] Resolve team name to team ID using jira-db skill's team resolution capability in .claude/commands/speckit.jira-tasks.md
-- [X] T036 [US3] Handle team not found: List available teams from jira-db cache in .claude/commands/speckit.jira-tasks.md
-- [X] T037 [US3] Convert Description markdown to ADF (Atlassian Document Format) for JIRA field in .claude/commands/speckit.jira-tasks.md
-- [X] T038 [US3] Convert Test Plan markdown to ADF for customfield_10332 in .claude/commands/speckit.jira-tasks.md
-- [X] T039 [US3] Convert Technical Details markdown to ADF for customfield_10301 in .claude/commands/speckit.jira-tasks.md
-- [X] T040 [US3] Map JiraTicket fields to JIRA API format: subject→summary, description→description (ADF) in .claude/commands/speckit.jira-tasks.md
-- [X] T041 [US3] Set Epic Link field when --epic flag provided (all tickets except Setup phase) in .claude/commands/speckit.jira-tasks.md
-- [X] T042 [US3] Create tickets via jira-db skill with correct issue type (Task vs Story) in .claude/commands/speckit.jira-tasks.md
-- [X] T043 [US3] Assign tickets to resolved team ID in .claude/commands/speckit.jira-tasks.md
-- [X] T044 [US3] Capture JIRA ticket keys (PM-12345, PM-12346, etc.) from creation response in .claude/commands/speckit.jira-tasks.md
-- [X] T045 [US3] Update JiraTicket entities with jira_key after creation in .claude/commands/speckit.jira-tasks.md
-- [X] T046 [US3] Handle jira-db skill unavailable: Graceful error with setup instructions in .claude/commands/speckit.jira-tasks.md
-- [X] T047 [US3] Handle partial creation failure: Report which tickets succeeded/failed in .claude/commands/speckit.jira-tasks.md
-- [X] T048 [US3] Update jira-tickets.md with JIRA ticket keys in mapping table in .claude/commands/speckit.jira-tasks.md
-- [X] T049 [US3] Add creation progress output: "Created PM-12345 [Story]: Subject (Tasks T001-T008)" in .claude/commands/speckit.jira-tasks.md
-- [X] T050 [US3] Generate task-to-ticket mapping output showing all created tickets in .claude/commands/speckit.jira-tasks.md
+- [X] T029 [US3] Add flag parsing logic (Step 5a) - parse --dry-run, --create, --project, --team, --epic, --interactive flags from $ARGUMENTS in templates/commands/jira-tasks.md
+- [X] T030 [US3] Add dry-run mode implementation - output preview of tickets with issue types and Epic associations without creating in JIRA in templates/commands/jira-tasks.md
+- [X] T031 [US3] Implement Epic validation (Step 5b) - call jira-db skill to verify Epic key exists before creating tickets in templates/commands/jira-tasks.md
+- [X] T032 [US3] Implement team resolution (Step 5c) - call jira-db skill to resolve team name to team_id in templates/commands/jira-tasks.md
+- [X] T033 [US3] Implement issue type inference (Step 5d) - set "Task" for setup/foundational/polish phases, "Story" for user_story phase in templates/commands/jira-tasks.md
+- [X] T034 [US3] Implement markdown-to-ADF conversion for Description field - support headings (##, ###), bold (**text**), lists (-, 1.), code blocks (```) in templates/commands/jira-tasks.md
+- [X] T035 [US3] Implement markdown-to-ADF conversion for Test Plan field using same rules as Description in templates/commands/jira-tasks.md
+- [X] T036 [US3] Implement markdown-to-ADF conversion for Technical Details field using same rules as Description in templates/commands/jira-tasks.md
+- [X] T037 [US3] Implement JIRA ticket creation (Step 5e) - call jira-db skill with fields (project, summary, description ADF, issuetype, customfield_10332 ADF, customfield_10301 ADF, team_id, epic_link) in templates/commands/jira-tasks.md
+- [X] T038 [US3] Capture JIRA ticket keys from jira-db responses and update jira-tickets.md with created keys in templates/commands/jira-tasks.md
+- [X] T039 [US3] Add output mapping display - show "Tasks T007-T016 → PM-12345 [Story]" format for each created ticket in templates/commands/jira-tasks.md
+- [X] T040 [US3] Implement error handling for jira-db skill unavailable - provide clear error with setup instructions in templates/commands/jira-tasks.md
+- [X] T041 [US3] Implement error handling for team name not found - list available teams from jira-db cache in templates/commands/jira-tasks.md
+- [X] T042 [US3] Implement error handling for invalid Epic key - fail fast with clear message suggesting verification in templates/commands/jira-tasks.md
+- [X] T043 [US3] Implement warning for Epic from different project - note cross-project linkage may be intentional in templates/commands/jira-tasks.md
+- [X] T044 [US3] Implement error handling for custom field IDs missing - provide guidance on configuring field mappings in templates/commands/jira-tasks.md
 
-**Checkpoint**: At this point, User Story 3 should be fully functional - command can create tickets in JIRA with all metadata correct
+**Checkpoint**: All user stories 1-3 should now be independently functional - tickets can be generated and automatically created in JIRA
 
 ---
 
-## Phase 6: User Story 4 - Interactive Review and Refinement (Priority: P4)
+## Phase 6: User Story 4 - Interactive Review (Priority: P4)
 
-**Goal**: Allow review and modification of ticket content before JIRA creation
+**Goal**: Optional interactive mode for reviewing and modifying tickets before JIRA creation
 
-**Independent Test**: Run with --interactive flag, modify ticket content when prompted, verify changes preserved in jira-tickets.md and created JIRA tickets
+**Independent Test**: Run `/speckit.jira-tasks --interactive --dry-run`, modify a ticket field, split a ticket, merge two tickets, and verify changes are saved
 
 ### Implementation for User Story 4
 
-- [X] T051 [P] [US4] Parse --interactive flag from command arguments in .claude/commands/speckit.jira-tasks.md
-- [X] T052 [P] [US4] Present each ticket for review with numbered menu: 1) Accept, 2) Edit, 3) Split, 4) Merge in .claude/commands/speckit.jira-tasks.md
-- [X] T053 [US4] Implement Edit option: Allow editing each field (Subject, Description, Test Plan, Technical Details) in .claude/commands/speckit.jira-tasks.md
-- [X] T054 [US4] Implement Split option: Allow breaking ticket into multiple smaller tickets in .claude/commands/speckit.jira-tasks.md
-- [X] T055 [US4] Implement Merge option: Allow combining tickets with manual task ID reassignment in .claude/commands/speckit.jira-tasks.md
-- [X] T056 [US4] Update JiraTicket entities with modified content from user edits in .claude/commands/speckit.jira-tasks.md
-- [X] T057 [US4] Update TaskToTicketMapping when tickets are split or merged in .claude/commands/speckit.jira-tasks.md
-- [X] T058 [US4] Write modified content back to jira-tickets.md before proceeding to creation in .claude/commands/speckit.jira-tasks.md
-- [X] T059 [US4] Proceed with JIRA creation using final reviewed content if --create flag also provided in .claude/commands/speckit.jira-tasks.md
+- [X] T045 [US4] Implement interactive mode detection - check for --interactive flag in parsed arguments in templates/commands/jira-tasks.md
+- [X] T046 [US4] Implement ticket review loop (Step 6a) - present each ticket with Subject, Description snippet, ask Accept/Edit/Split/Merge/Skip/Quit in templates/commands/jira-tasks.md
+- [X] T047 [US4] Implement Edit action - allow user to modify any of 4 fields (Subject, Description, Test Plan, Technical Details) in templates/commands/jira-tasks.md
+- [X] T048 [US4] Implement Split action - prompt for split point (task ID), create two tickets, regenerate all 4 fields for both using task subsets in templates/commands/jira-tasks.md
+- [X] T049 [US4] Implement Merge action - combine current ticket with next ticket, regenerate all 4 fields using combined task list in templates/commands/jira-tasks.md
+- [X] T050 [US4] Implement Skip action - mark ticket as excluded from JIRA creation, note in jira-tickets.md in templates/commands/jira-tasks.md
+- [X] T051 [US4] Update task-to-ticket mappings after split/merge operations - ensure all task IDs still accounted for in templates/commands/jira-tasks.md
+- [X] T052 [US4] Write modified tickets back to jira-tickets.md after each change in templates/commands/jira-tasks.md
 
-**Checkpoint**: At this point, User Story 4 should be fully functional - command supports interactive ticket review and editing
+**Checkpoint**: All user stories should now be independently functional including optional interactive refinement
 
 ---
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-**Purpose**: Error handling, edge cases, documentation, and user experience improvements
+**Purpose**: Edge case handling, validation, documentation, and verification
 
-- [X] T060 [P] Add error handling for missing tasks.md: "tasks.md not found. Run /speckit.tasks first." in .claude/commands/speckit.jira-tasks.md
-- [X] T061 [P] Add error handling for invalid task format: Warn about malformed tasks, continue with valid ones in .claude/commands/speckit.jira-tasks.md
-- [X] T062 [P] Add error handling for tasks without file paths: Flag as incomplete, suggest adding detail in .claude/commands/speckit.jira-tasks.md
-- [X] T063 [P] Add warning for very large task count (200+): Suggest breaking into multiple features in .claude/commands/speckit.jira-tasks.md
-- [X] T064 [P] Add handling for conflicting story labels: Use first occurrence, note ambiguity in output in .claude/commands/speckit.jira-tasks.md
-- [X] T065 [P] Add handling for mixed phase grouping: Use majority phase for issue type in .claude/commands/speckit.jira-tasks.md
-- [X] T066 [P] Add handling for cross-ticket dependencies: Note in Technical Details field in .claude/commands/speckit.jira-tasks.md
-- [X] T067 [P] Document command usage in frontmatter description in .claude/commands/speckit.jira-tasks.md
-- [X] T068 [P] Add examples section showing common usage patterns (basic, dry-run, with Epic) in .claude/commands/speckit.jira-tasks.md
-- [X] T069 [P] Add clear progress indicators for each workflow step in .claude/commands/speckit.jira-tasks.md
-- [X] T070 Validate all file paths are absolute (cross-platform compatibility) in .claude/commands/speckit.jira-tasks.md
-- [X] T071 Add final summary output: tasks loaded, tickets generated, JIRA keys if created in .claude/commands/speckit.jira-tasks.md
+- [X] T053 [P] Add edge case handling for empty tasks.md - detect and provide error message explaining /speckit.tasks must be run first in templates/commands/jira-tasks.md
+- [X] T054 [P] Add edge case handling for tasks without file paths - flag as incomplete, warn in output in templates/commands/jira-tasks.md
+- [X] T055 [P] Add edge case handling for very large task count (200+) - warn about feature scope, suggest splitting in templates/commands/jira-tasks.md
+- [X] T056 [P] Add edge case handling for conflicting story labels - use first occurrence, note ambiguity in output in templates/commands/jira-tasks.md
+- [X] T057 [P] Add edge case handling for mixed phase grouping - use majority phase for issue type, warn in output in templates/commands/jira-tasks.md
+- [X] T058 [P] Add validation for tasks.md format - check for proper checklist structure before parsing in templates/commands/jira-tasks.md
+- [X] T059 [P] Add absolute path validation - ensure all file paths from check-prerequisites.sh are absolute in templates/commands/jira-tasks.md
+- [X] T060 [P] Document command usage in templates/commands/jira-tasks.md - add examples section with 7 usage patterns (dry-run, create, interactive, etc.)
+- [X] T061 [P] Document jira-ticket-template.md structure - add comments explaining each field and subsection requirements in templates/jira-ticket-template.md
+- [X] T062 [P] Document jira-tickets-template.md structure - add comments explaining output format and placeholder replacements in templates/jira-tickets-template.md
+- [X] T063 [P] Add final summary output (Step 7) - display total tasks loaded, tickets generated, JIRA keys created (if any), output file path, next steps in templates/commands/jira-tasks.md
+- [X] T064 [P] Test PowerShell version of prerequisite check - add ps: entry to YAML frontmatter for Windows support in templates/commands/jira-tasks.md
+- [X] T065 Verify GitHub release workflow integration - test that release.yml triggers on template changes
+- [X] T066 Verify create-release-packages.sh processes new command - test that ZIP contains jira-tasks command and templates in correct locations
+- [ ] T067 Test end-to-end on this feature (001-jira-tasks-integration) - run /speckit.jira-tasks on specs/001-jira-tasks-integration/tasks.md
+- [ ] T068 Verify generated jira-tickets.md has proper structure - check metadata, 4-field tickets, mapping table, statistics
+- [ ] T069 Test with staging JIRA instance - run with --create flag, verify tickets created with correct issue types, Epic association, team assignment
+- [X] T070 Update documentation - add usage examples to quickstart.md showing command execution patterns
+- [ ] T071 Run verification-guard-quick agent to validate task completeness and format compliance
 
 ---
 
-## Dependencies
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Setup (Phase 1)**: No dependencies - can start immediately
+- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
+- **User Stories (Phase 3-6)**: All depend on Foundational phase completion
+  - User stories can then proceed in parallel (if staffed)
+  - Or sequentially in priority order (P1 → P2 → P3 → P4)
+- **Polish (Phase 7)**: Depends on all desired user stories being complete
 
 ### User Story Dependencies
 
-```text
-Phase 1 (Setup) → Phase 2 (Foundational) → All User Stories can run in parallel
+- **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
+- **User Story 2 (P2)**: Can start after Foundational (Phase 2) - Independent of US1 but logically builds on ticket structure
+- **User Story 3 (P3)**: Can start after Foundational (Phase 2) - Independent but references US1 and US2 ticket generation
+- **User Story 4 (P4)**: Can start after Foundational (Phase 2) - Independent, optional refinement feature
 
-User Story 1 (P1): Independent - No dependencies
-  ↓ provides: Grouped tasks and jira-tickets.md structure
+### Within Each User Story
 
-User Story 2 (P2): Depends on P1 completing
-  ↓ provides: 4-field AI-friendly ticket content
+- Setup tasks before foundational
+- Foundational before any user story
+- Task parsing before grouping (T011 before T012-T016)
+- Grouping before ticket generation (T012-T016 before T017)
+- Ticket generation before content population (T017 before T021-T024)
+- Content generation before JIRA integration (T021-T024 before T029-T044)
+- Core functionality before interactive mode (T009-T044 before T045-T052)
 
-User Story 3 (P3): Depends on P2 completing
-  ↓ provides: JIRA ticket creation capability
+### Parallel Opportunities
 
-User Story 4 (P4): Depends on P2 completing (can run parallel to P3)
-  ↓ provides: Interactive review before creation
-```
-
-### Story Completion Order
-
-**Minimum Viable Product (MVP)**: P1 + P2
-- Delivers ticket generation with AI-friendly structure
-- Manual JIRA creation using jira-tickets.md content
-
-**Full Automation**: P1 + P2 + P3
-- Adds automatic JIRA ticket creation
-- Most valuable for frequent use
-
-**Enhanced UX**: P1 + P2 + P3 + P4
-- Adds interactive review capability
-- Best for quality-sensitive workflows
-
----
-
-## Parallel Execution Examples
-
-### Within User Story 1 (Task Grouping)
-
-These tasks can run in parallel after T006 completes:
-```text
-T007 [Setup step implementation]
-T008 [Parsing logic]
-```
-
-After T008-T010 complete, these can run in parallel:
-```text
-T011 [Phase-based grouping]
-T012 [Story label grouping]
-T013 [File similarity clustering]
-```
-
-### Within User Story 2 (Ticket Generation)
-
-After T016 completes, these field generation tasks can run in parallel:
-```text
-T017 [Subject generation]
-T018 [Description generation]
-T019 [Test Plan generation]
-T020 [Technical Details generation]
-T021 [Load AI-friendly style guide]
-```
-
-After T021-T024 complete, these can run in parallel:
-```text
-T022 [Apply explicit labeling]
-T023 [Apply reduced ambiguity]
-T024 [Apply canonical terminology]
-```
-
-### Within User Story 3 (JIRA Integration)
-
-After T030 completes, these flag parsing and validation tasks can run in parallel:
-```text
-T031 [Parse command flags]
-T032 [Dry-run mode]
-T033 [Epic validation]
-```
-
-After T035 completes, these ADF conversion tasks can run in parallel:
-```text
-T037 [Convert Description to ADF]
-T038 [Convert Test Plan to ADF]
-T039 [Convert Technical Details to ADF]
-```
-
-### Within User Story 4 (Interactive Review)
-
-After T050 completes, these UI option implementations can run in parallel:
-```text
-T052 [Review menu]
-T053 [Edit option]
-T054 [Split option]
-T055 [Merge option]
-```
-
-### Polish Phase
-
-After all user stories complete, these tasks can ALL run in parallel:
-```text
-T060 [Missing tasks.md error]
-T061 [Invalid format error]
-T062 [Missing file paths error]
-T063 [Large task count warning]
-T064 [Conflicting labels handling]
-T065 [Mixed phase handling]
-T066 [Cross-ticket dependencies]
-T067 [Documentation]
-T068 [Examples]
-T069 [Progress indicators]
-```
+- All Setup tasks (T001, T002, T003) marked [P] can run in parallel
+- All Foundational workflow modifications (T006, T007, T008) marked [P] can run in parallel
+- Once Foundational phase completes, all 4 user stories can start in parallel (if team capacity allows)
+- All Polish tasks marked [P] (T053-T062, T064) can run in parallel
+- Different user stories can be worked on in parallel by different team members
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (P1 + P2)
+### MVP First (User Story 1 + User Story 2)
 
-**Deliverable**: Command that generates jira-tickets.md with AI-friendly structure
+1. Complete Phase 1: Setup (T001-T003)
+2. Complete Phase 2: Foundational (T004-T008) - CRITICAL, blocks all stories
+3. Complete Phase 3: User Story 1 (T009-T020) - Core grouping functionality
+4. Complete Phase 4: User Story 2 (T021-T028) - AI-friendly ticket content
+5. **STOP and VALIDATE**: Test on specs/001-jira-tasks-integration/tasks.md, verify jira-tickets.md output
+6. Deploy/demo if ready - command can generate tickets offline
 
-**Value**: Automates 80% of the work (grouping and content generation)
+### Incremental Delivery
 
-**Tasks**: T001-T030 (30 tasks)
+1. Complete Setup + Foundational → Foundation ready
+2. Add User Story 1 → Test independently → MVP ready (file generation only)
+3. Add User Story 2 → Test independently → Enhanced content quality
+4. Add User Story 3 → Test independently → JIRA automation enabled
+5. Add User Story 4 → Test independently → Interactive refinement available
+6. Each story adds value without breaking previous stories
 
-**Timeline**: ~3-5 days for core functionality
+### Parallel Team Strategy
 
-### Full Automation (Add P3)
+With multiple developers:
 
-**Deliverable**: Command that creates tickets directly in JIRA
+1. Team completes Setup + Foundational together (T001-T008)
+2. Once Foundational is done:
+   - Developer A: User Story 1 (T009-T020)
+   - Developer B: User Story 2 (T021-T028) - starts templates/jira-ticket-template.md work
+   - Developer C: User Story 3 (T029-T044) - research jira-db skill integration
+   - Developer D: Polish tasks (T053-T062) - edge cases and validation
+3. Stories complete and integrate independently
+4. Final integration testing (T065-T069)
 
-**Value**: Eliminates all manual work for ticket creation
+---
 
-**Tasks**: T031-T050 (20 additional tasks)
+## Notes
 
-**Timeline**: ~2-3 days for JIRA integration
-
-### Enhanced UX (Add P4)
-
-**Deliverable**: Interactive review before creation
-
-**Value**: Quality control for ticket content
-
-**Tasks**: T051-T059 (9 additional tasks)
-
-**Timeline**: ~1-2 days for interactive features
-
-### Polish (Cross-Cutting)
-
-**Deliverable**: Production-ready error handling and UX
-
-**Tasks**: T060-T071 (12 tasks)
-
-**Timeline**: ~1-2 days for polish
-
-### Total Scope
-
-**Total Tasks**: 71
-- Setup: 3 tasks
-- Foundational: 3 tasks
-- P1 (MVP core): 10 tasks
-- P2 (AI-friendly structure): 14 tasks
-- P3 (JIRA creation): 20 tasks
-- P4 (Interactive): 9 tasks
-- Polish: 12 tasks
-
-**Estimated Timeline**:
-- MVP (P1+P2): 3-5 days
-- Full automation (+P3): 5-8 days total
-- Complete feature (+P4+Polish): 7-12 days total
-
-**Parallel Opportunities**: ~35 tasks marked [P] (49% parallelizable)
+- [P] tasks = different files, no dependencies
+- [Story] label maps task to specific user story for traceability
+- Each user story should be independently completable and testable
+- Commit after each task or logical group
+- Stop at any checkpoint to validate story independently
+- Templates in `templates/` directory (repo source) get copied to `.specify/templates/` during installation
+- Command in `templates/commands/` (repo source) gets copied to `.claude/commands/` during installation
+- Release workflow automatically handles distribution when templates change
+- Based on clarifications from 2025-11-14 session (distribution, script extension, implementation approach)

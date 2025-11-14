@@ -11,6 +11,7 @@
 #   --json              Output in JSON format
 #   --require-tasks     Require tasks.md to exist (for implementation phase)
 #   --include-tasks     Include tasks.md in AVAILABLE_DOCS list
+#   --for-jira-tasks    Add JIRA-specific paths (TASKS_FILE, JIRA_TICKETS_FILE)
 #   --paths-only        Only output path variables (no validation)
 #   --help, -h          Show help message
 #
@@ -25,6 +26,7 @@ set -e
 JSON_MODE=false
 REQUIRE_TASKS=false
 INCLUDE_TASKS=false
+FOR_JIRA_TASKS=false
 PATHS_ONLY=false
 
 for arg in "$@"; do
@@ -37,6 +39,9 @@ for arg in "$@"; do
             ;;
         --include-tasks)
             INCLUDE_TASKS=true
+            ;;
+        --for-jira-tasks)
+            FOR_JIRA_TASKS=true
             ;;
         --paths-only)
             PATHS_ONLY=true
@@ -51,16 +56,20 @@ OPTIONS:
   --json              Output in JSON format
   --require-tasks     Require tasks.md to exist (for implementation phase)
   --include-tasks     Include tasks.md in AVAILABLE_DOCS list
+  --for-jira-tasks    Add JIRA-specific paths (TASKS_FILE, JIRA_TICKETS_FILE)
   --paths-only        Only output path variables (no prerequisite validation)
   --help, -h          Show this help message
 
 EXAMPLES:
   # Check task prerequisites (plan.md required)
   ./check-prerequisites.sh --json
-  
+
   # Check implementation prerequisites (plan.md + tasks.md required)
   ./check-prerequisites.sh --json --require-tasks --include-tasks
-  
+
+  # Check JIRA tasks prerequisites (adds JIRA-specific paths)
+  ./check-prerequisites.sh --json --for-jira-tasks
+
   # Get feature paths only (no validation)
   ./check-prerequisites.sh --paths-only
   
@@ -86,8 +95,13 @@ check_feature_branch "$CURRENT_BRANCH" "$HAS_GIT" || exit 1
 if $PATHS_ONLY; then
     if $JSON_MODE; then
         # Minimal JSON paths payload (no validation performed)
-        printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s"}\n' \
-            "$REPO_ROOT" "$CURRENT_BRANCH" "$FEATURE_DIR" "$FEATURE_SPEC" "$IMPL_PLAN" "$TASKS"
+        if $FOR_JIRA_TASKS; then
+            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s","TASKS_FILE":"%s","JIRA_TICKETS_FILE":"%s"}\n' \
+                "$REPO_ROOT" "$CURRENT_BRANCH" "$FEATURE_DIR" "$FEATURE_SPEC" "$IMPL_PLAN" "$TASKS" "$TASKS_FILE" "$JIRA_TICKETS_FILE"
+        else
+            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s"}\n' \
+                "$REPO_ROOT" "$CURRENT_BRANCH" "$FEATURE_DIR" "$FEATURE_SPEC" "$IMPL_PLAN" "$TASKS"
+        fi
     else
         echo "REPO_ROOT: $REPO_ROOT"
         echo "BRANCH: $CURRENT_BRANCH"
@@ -95,6 +109,10 @@ if $PATHS_ONLY; then
         echo "FEATURE_SPEC: $FEATURE_SPEC"
         echo "IMPL_PLAN: $IMPL_PLAN"
         echo "TASKS: $TASKS"
+        if $FOR_JIRA_TASKS; then
+            echo "TASKS_FILE: $TASKS_FILE"
+            echo "JIRA_TICKETS_FILE: $JIRA_TICKETS_FILE"
+        fi
     fi
     exit 0
 fi
@@ -147,8 +165,14 @@ if $JSON_MODE; then
         json_docs=$(printf '"%s",' "${docs[@]}")
         json_docs="[${json_docs%,}]"
     fi
-    
-    printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s}\n' "$FEATURE_DIR" "$json_docs"
+
+    # Include JIRA paths if requested
+    if $FOR_JIRA_TASKS; then
+        printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s,"TASKS_FILE":"%s","JIRA_TICKETS_FILE":"%s"}\n' \
+            "$FEATURE_DIR" "$json_docs" "$TASKS_FILE" "$JIRA_TICKETS_FILE"
+    else
+        printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s}\n' "$FEATURE_DIR" "$json_docs"
+    fi
 else
     # Text output
     echo "FEATURE_DIR:$FEATURE_DIR"
