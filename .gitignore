@@ -46,3 +46,5 @@ sdd-*/
 
 CLAUDE.md
 .claude/
+
+.markdownlint*
