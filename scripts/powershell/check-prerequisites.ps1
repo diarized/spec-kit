@@ -11,6 +11,7 @@
 #   -Json               Output in JSON format
 #   -RequireTasks       Require tasks.md to exist (for implementation phase)
 #   -IncludeTasks       Include tasks.md in AVAILABLE_DOCS list
+#   -ForJiraTasks       Add JIRA-specific paths (TASKS_FILE, JIRA_TICKETS_FILE)
 #   -PathsOnly          Only output path variables (no validation)
 #   -Help, -h           Show help message
 
@@ -19,6 +20,7 @@ param(
     [switch]$Json,
     [switch]$RequireTasks,
     [switch]$IncludeTasks,
+    [switch]$ForJiraTasks,
     [switch]$PathsOnly,
     [switch]$Help
 )
@@ -36,16 +38,20 @@ OPTIONS:
   -Json               Output in JSON format
   -RequireTasks       Require tasks.md to exist (for implementation phase)
   -IncludeTasks       Include tasks.md in AVAILABLE_DOCS list
+  -ForJiraTasks       Add JIRA-specific paths (TASKS_FILE, JIRA_TICKETS_FILE)
   -PathsOnly          Only output path variables (no prerequisite validation)
   -Help, -h           Show this help message
 
 EXAMPLES:
   # Check task prerequisites (plan.md required)
   .\check-prerequisites.ps1 -Json
-  
+
   # Check implementation prerequisites (plan.md + tasks.md required)
   .\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
-  
+
+  # Check JIRA tasks prerequisites (adds JIRA-specific paths)
+  .\check-prerequisites.ps1 -Json -ForJiraTasks
+
   # Get feature paths only (no validation)
   .\check-prerequisites.ps1 -PathsOnly
 
@@ -66,14 +72,27 @@ if (-not (Test-FeatureBranch -Branch $paths.CURRENT_BRANCH -HasGit:$paths.HAS_GI
 # If paths-only mode, output paths and exit (support combined -Json -PathsOnly)
 if ($PathsOnly) {
     if ($Json) {
-        [PSCustomObject]@{
-            REPO_ROOT    = $paths.REPO_ROOT
-            BRANCH       = $paths.CURRENT_BRANCH
-            FEATURE_DIR  = $paths.FEATURE_DIR
-            FEATURE_SPEC = $paths.FEATURE_SPEC
-            IMPL_PLAN    = $paths.IMPL_PLAN
-            TASKS        = $paths.TASKS
-        } | ConvertTo-Json -Compress
+        if ($ForJiraTasks) {
+            [PSCustomObject]@{
+                REPO_ROOT         = $paths.REPO_ROOT
+                BRANCH            = $paths.CURRENT_BRANCH
+                FEATURE_DIR       = $paths.FEATURE_DIR
+                FEATURE_SPEC      = $paths.FEATURE_SPEC
+                IMPL_PLAN         = $paths.IMPL_PLAN
+                TASKS             = $paths.TASKS
+                TASKS_FILE        = $paths.TASKS_FILE
+                JIRA_TICKETS_FILE = $paths.JIRA_TICKETS_FILE
+            } | ConvertTo-Json -Compress
+        } else {
+            [PSCustomObject]@{
+                REPO_ROOT    = $paths.REPO_ROOT
+                BRANCH       = $paths.CURRENT_BRANCH
+                FEATURE_DIR  = $paths.FEATURE_DIR
+                FEATURE_SPEC = $paths.FEATURE_SPEC
+                IMPL_PLAN    = $paths.IMPL_PLAN
+                TASKS        = $paths.TASKS
+            } | ConvertTo-Json -Compress
+        }
     } else {
         Write-Output "REPO_ROOT: $($paths.REPO_ROOT)"
         Write-Output "BRANCH: $($paths.CURRENT_BRANCH)"
@@ -81,6 +100,10 @@ if ($PathsOnly) {
         Write-Output "FEATURE_SPEC: $($paths.FEATURE_SPEC)"
         Write-Output "IMPL_PLAN: $($paths.IMPL_PLAN)"
         Write-Output "TASKS: $($paths.TASKS)"
+        if ($ForJiraTasks) {
+            Write-Output "TASKS_FILE: $($paths.TASKS_FILE)"
+            Write-Output "JIRA_TICKETS_FILE: $($paths.JIRA_TICKETS_FILE)"
+        }
     }
     exit 0
 }
@@ -127,21 +150,30 @@ if ($IncludeTasks -and (Test-Path $paths.TASKS)) {
 # Output results
 if ($Json) {
     # JSON output
-    [PSCustomObject]@{ 
-        FEATURE_DIR = $paths.FEATURE_DIR
-        AVAILABLE_DOCS = $docs 
-    } | ConvertTo-Json -Compress
+    if ($ForJiraTasks) {
+        [PSCustomObject]@{
+            FEATURE_DIR       = $paths.FEATURE_DIR
+            AVAILABLE_DOCS    = $docs
+            TASKS_FILE        = $paths.TASKS_FILE
+            JIRA_TICKETS_FILE = $paths.JIRA_TICKETS_FILE
+        } | ConvertTo-Json -Compress
+    } else {
+        [PSCustomObject]@{
+            FEATURE_DIR    = $paths.FEATURE_DIR
+            AVAILABLE_DOCS = $docs
+        } | ConvertTo-Json -Compress
+    }
 } else {
     # Text output
     Write-Output "FEATURE_DIR:$($paths.FEATURE_DIR)"
     Write-Output "AVAILABLE_DOCS:"
-    
+
     # Show status of each potential document
     Test-FileExists -Path $paths.RESEARCH -Description 'research.md' | Out-Null
     Test-FileExists -Path $paths.DATA_MODEL -Description 'data-model.md' | Out-Null
     Test-DirHasFiles -Path $paths.CONTRACTS_DIR -Description 'contracts/' | Out-Null
     Test-FileExists -Path $paths.QUICKSTART -Description 'quickstart.md' | Out-Null
-    
+
     if ($IncludeTasks) {
         Test-FileExists -Path $paths.TASKS -Description 'tasks.md' | Out-Null
     }
